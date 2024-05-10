@@ -22,32 +22,33 @@ async function getCommitsOnBranch(branch, config) {
 }
 
 async function getLatestVersionInCommits(commits, sortedVersions, objectsByVersion, config) {
-    // Fetch all tags at once
-    const tags = await config.octokit.rest.git.listMatchingRefs({
-        ...github.context.repo,
-        ref: 'tags/',
-    })
+  // Fetch all tags at once
+  const tags = await config.octokit.rest.git.listMatchingRefs({
+    ...github.context.repo,
+    ref: 'tags/',
+  })
 
-    // Create a map of tag SHAs to tag data
-    const tagMap = new Map(tags.data.map((tag) => [tag.object.sha, tag]))
+  // Create a map of tag SHAs to tag data
+  const tagMap = new Map(tags.data.map((tag) => [tag.object.sha, tag]))
 
-    for (let i = sortedVersions.length - 1; i >= 0; i--) {
-        const refObj = objectsByVersion[sortedVersions[i]]
+  for (let i = sortedVersions.length - 1; i >= 0; i--) {
+    const refObj = objectsByVersion[sortedVersions[i]]
 
-        if (refObj.type === 'commit' && commits.has(refObj.sha)) {
-            return `${sortedVersions[i]}`
-        }
-
-        if (refObj.type === 'tag') {
-            const tag = tagMap.get(refObj.sha)
-
-            if (tag && commits.has(tag.data.object.sha)) {
-                return `${sortedVersions[i]}`
-            }
-        }
+    if (refObj.type === 'commit' && commits.has(refObj.sha)) {
+      return `${sortedVersions[i]}`
     }
 
-    return DEFAULT_VERSION
+    if (refObj.type === 'tag') {
+      const tag = tagMap.get(refObj.sha)
+
+      // Check if tag is not undefined before accessing its properties
+      if (tag && tag.data && tag.data.object && commits.has(tag.data.object.sha)) {
+        return `${sortedVersions[i]}`
+      }
+    }
+  }
+
+  return DEFAULT_VERSION
 }
 
 // Tags the specified version and annotates it with the provided release notes.
