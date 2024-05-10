@@ -13082,18 +13082,13 @@ const DEFAULT_VERSION = '0.0.0'
 
 async function getCommitsOnBranch(branch, config) {
     const commits = new Set()
-    // eslint-disable-next-line no-restricted-syntax
-    for await (const response of config.octokit.paginate.iterator(
-        config.octokit.rest.repos.listCommits,
-        {
-            ...github.context.repo,
-            sha: branch,
-        },
-    )) {
-        response.data.forEach((commit) => {
-            commits.add(commit.sha)
-        })
-    }
+    const response = await config.octokit.rest.repos.listCommits({
+        ...github.context.repo,
+        sha: branch,
+    })
+    response.data.forEach((commit) => {
+        commits.add(commit.sha)
+    })
     return commits
 }
 
