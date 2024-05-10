@@ -22,7 +22,16 @@ async function getCommitsOnBranch(branch, config) {
 }
 
 async function getLatestVersionInCommits(commits, sortedVersions, objectsByVersion, config) {
-    for (let i = 0; i < sortedVersions.length; i++) {
+    // Fetch all tags at once
+    const tags = await config.octokit.rest.git.listMatchingRefs({
+        ...github.context.repo,
+        ref: 'tags/',
+    })
+
+    // Create a map of tag SHAs to tag data
+    const tagMap = new Map(tags.data.map((tag) => [tag.object.sha, tag]))
+
+    for (let i = sortedVersions.length - 1; i >= 0; i--) {
         const refObj = objectsByVersion[sortedVersions[i]]
 
         if (refObj.type === 'commit' && commits.has(refObj.sha)) {
@@ -30,13 +39,9 @@ async function getLatestVersionInCommits(commits, sortedVersions, objectsByVersi
         }
 
         if (refObj.type === 'tag') {
-            // eslint-disable-next-line no-await-in-loop
-            const tag = await config.octokit.rest.git.getTag({
-                ...github.context.repo,
-                tag_sha: refObj.sha,
-            })
+            const tag = tagMap.get(refObj.sha)
 
-            if (commits.has(tag.data.object.sha)) {
+            if (tag && commits.has(tag.data.object.sha)) {
                 return `${sortedVersions[i]}`
             }
         }
